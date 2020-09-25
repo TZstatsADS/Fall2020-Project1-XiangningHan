@@ -1,0 +1,282 @@
+---
+title: "project_1"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+Project1:A "data story" on how Americans vote
+Project Description:This is the first and only individual(as opposed to team) this semester.
+Term: Fall 2020
+Project title:How did the features of voters across the United States change?
+This project is conducted by Xiangning Han
+
+Project summary: I processed the time series data from 2000 to 2016 to see how did the features of voters change.In this project, I will answer two questions: 1.How did the demographic information of voters such as age group, income,race,employment status,gender changed during the decades?2.How the different demographic characteristic related to the vote behavior? 3.what issues that the voters concerned about most.
+
+
+Introduction
+The upcoming 2020 presidential election has drawn renewed attention to how demographic shifts across the United States have changed the composition of the electorate.To look deeper in this concern,I processed the time series data from 2000 to 2016 to see how did the features of voters change.In this project, I will answer two questions: 1.How did the demographic information of voters such as age group, income,race,employment status,gender changed during the decades?2.How the different demographic characteristic related to the vote behavior? 3.what issues that the voters concerned about most.
+#useful library
+```{r}
+library(ggplot2)
+library(plyr)
+library(dplyr)
+```
+
+#import the raw data
+```{r}
+library(haven)
+votedata<-read_sav("Downloads/anes_timeseries_cdf_sav/anes_timeseries_cdf.sav")
+```
+
+#have a look at the structure of dataset
+```{r}
+dim(votedata)
+```
+Basic data summaries: this data set has 59944 rows and 1029 columns, which means it has 1029 variables.It contains the time series data from 1948 to 2016.
+
+#Process variables for analysis
+I only want the data from 1952.
+
+```{r}
+#choose the data after year 1952
+selected_data<-votedata[which(votedata$VCF0004>=1952),]
+```
+
+```{r}
+#have a look at the newly chose data
+dim(selected_data)
+```
+Now the data set have 59282 rows. 
+
+These variables were selected based on their description in the ANES codebook.I need the variables which are year, age group, gender,employment status,income level, race, education, turnout,which parity they vote,What is the Most Important National Problem.I will explain the labels refer to each variable later.
+```{r}
+#Select using variable to built new data set which will use in later.
+newdata<-selected_data[,c('VCF0004','VCF0102','VCF0104','VCF0116','VCF0114','VCF0105a','VCF0110','VCF0706','VCF0875','VCF0703')]
+```
+
+```{r}
+#change the column name to make the data set more concise
+  colnames(newdata)<-c('year','age','gender','employment','income','race','education','vote','concerns','trunout')
+```
+I just want to know the features about the people who vote, so just keep the data which the turnout column equals to 3.
+
+```{r}
+new_data<-newdata[which(newdata$trunout==3),]
+finaldata<-as_factor(new_data)
+```
+
+Since most "NA" in the data set means the voter doesn't know or doesn't want to answer this question. In order to simplify the process of visualization, I delete the corresponding 'NA' value when looking at each variable.
+
+
+Data visualization and simple analysis
+```{r}
+barplot(table(finaldata$year),las=2,main = "number of voter over the years")
+```
+The numbers of the voters over the year are different, so I use the proportions, not the numbers to describe the changes of the voter.
+
+Question 1
+How did the demographic information of voters such as age group,income,race,employment status,gender changed during the decades?
+
+First, I would like to see how did age groups of the voters change.
+```{r}
+#select the data which the age group is not "NA"
+new_age_data_year<-finaldata[which(!is.na(finaldata$age)),]
+```
+
+```{r}
+age_year<-new_age_data_year %>%
+  group_by(year,age)%>%
+  summarize(n=n())%>%
+  mutate(prop=n/sum(n)*100 )
+ggplot(age_year,aes(x=year,y=prop,fill=age))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel1')+theme(axis.text.x=element_text(angle=10))+labs(title='How did the age group which attended the election changes ')+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))
+```
+From the graph we can figure that the main participants in the election aged from 35-54, the proportion of 55-64 group has a fluctuating increase. 
+
+
+Second, let's see how did income levels of the voters change.
+```{r}
+#select the data which the income is not "NA"
+new_income_data_year<-finaldata[which(!is.na(finaldata$income )),]
+```
+
+
+```{r}
+income_year<-new_income_data_year %>%
+  group_by(year,income)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(income_year,aes(x=year,y=prop,fill=income))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel1')+theme(axis.text.x=element_text(angle=90))+labs(title='How did the income group which attended the election changes ')+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))
+```
+From the graph we can figure that the income levels of main participants in the election are 34 to 67 percentile and 68 to 95 percentile. It shows that the middle class family are willing to participate the election.
+
+Then, let's see how the did gender ratio of the voters change.
+```{r}
+#select the data which the gender is not "NA"
+new_gender_data_year<-finaldata[which(!is.na(finaldata$gender )),]
+```
+
+```{r}
+gender_year<-new_gender_data_year %>%
+  group_by(year,gender)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(gender_year,aes(x=year,y=prop,fill=gender))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel1')+theme(axis.text.x=element_text(angle=90))+labs(title='How did the gender which attended the election changes ')
+```
+Basically, male and female have the same enthusiasm for elections. In 2008, the proportion of female has a fluctuating increase.
+
+
+How did the employment status of the voters change.
+```{r}
+new_employment_data_year<-finaldata[which(!is.na(finaldata$employment )),]
+```
+
+```{r}
+employment_year<-new_employment_data_year %>%
+  group_by(year,employment)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(employment_year,aes(x=year,y=prop,fill=employment))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel1')+theme(axis.text.x=element_text(angle=90))+labs(title='How did the employment which attended the election changes ')
+```
+It is obvious that the people who are employed now are willing to vote. And the retirees also make up a bulk of the vote.
+
+I am also curious about the changing racial and ethnic makeup of the U.S. electorate.
+
+```{r}
+#race
+new_race_data_year<-finaldata[which(!is.na(finaldata$race )),]
+```
+
+```{r}
+race_year<-new_race_data_year %>%
+  group_by(year,race)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(race_year,aes(x=year,y=prop,fill=race))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel1')+theme(axis.text.x=element_text(angle=90))+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))+labs(title='How did the race which attended the election changes ')
+```
+The non-White voting population has played a large role in driving growth in the nation’s electorate. The Black non-Hispanic participating rate is fluctuating increasing.Hispanic made up about 19% of all voters in 2008, up 10 percentage points since 2000.
+
+#education
+How did the education levels of votes change?
+```{r}
+new_education_data_year<-finaldata[which(!is.na(finaldata$education )),]
+```
+
+```{r}
+education_year<-new_education_data_year %>%
+  group_by(year,education)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(education_year,aes(x=year,y=prop,fill=education))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Pastel2')+theme(axis.text.x=element_text(angle=60))+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))+labs(title='How did the education level which attended the election changes ')
+```
+Before 1990s, the major voter group is the people who have high school degree. In the recent decades, the votes has higher degree. The proportion of people have a college or advanced degree participating in the election is about 45% in 2016,up 7 percentage points since 2000, which becomes the major force of voting.
+
+
+Question 2
+How the different demographic characteristic related to the vote behavior? Who did they vote for in the election?
+
+
+# income group &vote
+First, let's take a look at the relationship between voter's income level and the the party they vote for.
+
+```{r}
+#cleaning the data where the vote data is denoted by 'NA' and 7
+new_income_vote_year<-new_income_data_year[which(!is.na(new_income_data_year$vote)&new_income_data_year$vote!=7),]
+```
+
+
+
+```{r}
+income_vote_year<-new_income_vote_year%>%
+  group_by(year,income) %>%
+  count(vote)%>%
+  group_by(year,income)%>%
+  mutate(
+    prop=n/sum(n)
+    )
+ggplot(income_vote_year,aes(x=year,y=prop,fill=vote))+geom_bar(stat='identity',colour='black')+scale_fill_manual(values=c("dodgerblue3","firebrick2","gold1","lightgoldenrod1","hotpink1"))+facet_wrap(~income,ncol=1)+theme(axis.text.x=element_text(angle=90))+labs(title = "Who did the income groups vote for in the election")+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))
+```
+From the graph we can conclusion that the lower income people prefer to vote for Democrat, and the voters' income level range 96 to 100 percentile are willing to vote for Republican.
+
+#education group&vote
+The relationship between voter's education level and the the party they vote for.
+```{r}
+new_education_vote_year<-new_education_data_year[which(!is.na(new_education_data_year$vote)& new_education_data_year$vote!=7),]
+```
+
+```{r}
+education_vote_year<-new_education_vote_year%>%
+  group_by(year,education) %>%
+  count(vote)%>%
+  group_by(year,education)%>%
+  mutate(
+    prop=n/sum(n)
+    )
+ggplot(education_vote_year,aes(x=year,y=prop,fill=vote))+geom_bar(stat='identity',colour='black')+scale_fill_manual(values=c("dodgerblue3","firebrick2","gold1","lightgoldenrod1","hotpink1"))+facet_wrap(~education,ncol=1)+theme(axis.text.x=element_text(angle=90))+labs(title = "Who did different education levels vote for in the election")+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))
+```
+From the graph we can conclusion that the lower education level's people prefer to vote for Democrat, and the voters' have some college and college or advanced degree are willing to vote for Republican.
+
+race &vote
+The relationship between voter's racial and ethnic identity and the the party they vote for.
+```{r}
+new_race_vote_year<-new_race_data_year[which(!is.na(new_race_data_year$vote)& new_race_data_year$vote!=7),]
+```
+
+```{r}
+race_vote_year<-new_race_vote_year%>%
+  group_by(year,race) %>%
+  count(vote)%>%
+  group_by(year,race)%>%
+  mutate(
+    prop=n/sum(n)
+    )
+ggplot(race_vote_year,aes(x=year,y=prop,fill=vote))+geom_bar(stat='identity',colour='black')+scale_fill_manual(values=c("dodgerblue3","firebrick2","gold1","lightgoldenrod1","hotpink1"))+facet_wrap(~race,ncol=1)+theme(axis.text.x=element_text(angle=90))+labs(title = "Who did different race vote for in the election")+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.7))
+```
+
+The graph shows that the Democratic Party maintains a wide and long-standing advantage among Black, Hispanic and Asian American voters.Among White voters, the partisan balance has been generally stable over the past decade, with the Republican Party holding a slight advantage.
+
+
+#employment statues & vote
+The relationship between voter's employment status and the the party they vote for.
+```{r}
+new_employment_vote_year<-new_employment_data_year[which(!is.na(new_employment_data_year$vote)& new_employment_data_year$vote!=7),]
+```
+
+```{r}
+employment_vote_year<-new_employment_vote_year%>%
+  group_by(year,employment) %>%
+  count(vote)%>%
+  group_by(year,employment)%>%
+  mutate(
+    prop=n/sum(n)
+    )
+ggplot(employment_vote_year,aes(x=year,y=prop,fill=vote))+geom_bar(stat='identity',colour='black')+
+  scale_fill_manual(values=c("dodgerblue3","firebrick2","gold1","lightgoldenrod1","hotpink1"))+facet_wrap(~employment,ncol=1)+theme(axis.text.x=element_text(angle=90))+theme_bw()+labs(title = "Who did different employment status vote for in the election")+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))
+```
+From the graph, the Democratic Party maintains the obvious advantage among temporarily laid off,unemployed, and permanently disabled voters.Among the employed voters, the partisan balance has been generally stable over the past decade, with the Democrat Party holding a slight advantage. Among the retired voters, the partisan balance has been generally stable over the past decade.
+
+Question 3
+What issue did that the voters concern most.
+I explored the issues that the voters concerns about. 
+```{r}
+concern_data<-finaldata[which(!is.na(finaldata$concerns)),]
+```
+
+```{r}
+concern_year<-concern_data %>%
+  group_by(year,concerns)%>%
+  summarize(n=n())%>%
+  mutate( prop=n/sum(n)*100 )
+ggplot(concern_year,aes(x=year,y=prop,fill=concerns))+geom_bar(stat='identity',colour='black')+scale_fill_brewer(palette='Greens')+theme(axis.text.x=element_text(angle=60))+geom_text(aes(label=round(prop,1),y=prop),size=1,position = position_stack(vjust=0.5))+labs(title='What issue did that the voters concern most.')
+```
+The issues that the voters concern has changed. Before 1980s, the voters concerns more about the agricultural issue. In 1990s, the voters concerns more about the labor issues. In the recent decades, the voters conerns more about the social welfare.
+
+Conclusion
+1.The voters' features such as age group, income level,gender, employment stutas changed slightly. And the edcuation level and racial identity exhibited little change. 
+2.The relationship between racial identity,income level, education level and the voter's partisan is obvious. 
+3.As time goes on, so do voters' concerns. In the recent decades, the voters conerns more about the social welfare.
+
+Limitation
+1. Data bias.
+2.The missing value.
